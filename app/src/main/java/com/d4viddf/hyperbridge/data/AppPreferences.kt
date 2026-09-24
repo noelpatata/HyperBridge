@@ -204,6 +204,10 @@ class AppPreferences internal constructor(
     val featuredPermissionWarningFlow: Flow<Boolean> = dao.getSettingFlow(SettingsKeys.FEATURED_PERMISSION_WARNING).map { it.toBoolean(false) }
     suspend fun setFeaturedPermissionWarning(show: Boolean) = save(SettingsKeys.FEATURED_PERMISSION_WARNING, show.toString())
 
+    /** Design manager list: live island preview per design (true) or the translator-style icon row. */
+    val designListShowPreviewFlow: Flow<Boolean> = dao.getSettingFlow("design_list_show_preview").map { it.toBoolean(true) }
+    suspend fun setDesignListShowPreview(show: Boolean) = save("design_list_show_preview", show.toString())
+
     val floatingSetupNoticePendingFlow: Flow<Boolean> =
         dao.getSettingFlow(SettingsKeys.FLOATING_SETUP_NOTICE_PENDING).map { it.toBoolean(false) }
 

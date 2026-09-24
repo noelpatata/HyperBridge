@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -88,6 +87,8 @@ import com.d4viddf.hyperbridge.models.theme.GlobalConfig
 import com.d4viddf.hyperbridge.models.theme.HyperTheme
 import com.d4viddf.hyperbridge.models.theme.ResourceType
 import com.d4viddf.hyperbridge.models.theme.ThemeMetadata
+import com.d4viddf.hyperbridge.models.translator.isDesign
+import com.d4viddf.hyperbridge.models.translator.isImported
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -100,6 +101,7 @@ fun DesignScreen(
     onNavigateToThemes: () -> Unit,
     onEditTheme: (String) -> Unit,
     onNavigateToTranslators: () -> Unit = {},
+    onNavigateToDesigns: () -> Unit = {},
     onCreateTranslator: () -> Unit = {},
     onEditTranslator: (String) -> Unit = {},
     onLaunchPicker: () -> Unit,
@@ -124,10 +126,7 @@ fun DesignScreen(
     val sheetState = rememberModalBottomSheetState()
 
     // A design is a translator that renders through a template (or, later, a custom widget island).
-    val designs = allTranslators.filter {
-        it.presentation.mode == com.d4viddf.hyperbridge.models.translator.PresentationMode.TEMPLATE ||
-            it.presentation.mode == com.d4viddf.hyperbridge.models.translator.PresentationMode.WIDGET
-    }
+    val designs = allTranslators.filter { it.isDesign }
 
     LaunchedEffect(Unit) {
         val themes = themeRepo.getAvailableThemes()
@@ -181,6 +180,7 @@ fun DesignScreen(
         translators = allTranslators,
         designs = designs,
         onAddDesign = { showAddDesign = true },
+        onNavigateToDesigns = onNavigateToDesigns,
         onNavigateToWidgets = onNavigateToWidgets,
         onNavigateToThemes = onNavigateToThemes,
         onEditTheme = onEditTheme,
@@ -275,6 +275,7 @@ fun DesignScreenContent(
     translators: List<com.d4viddf.hyperbridge.models.translator.CustomTranslator> = emptyList(),
     designs: List<com.d4viddf.hyperbridge.models.translator.CustomTranslator> = emptyList(),
     onAddDesign: () -> Unit = {},
+    onNavigateToDesigns: () -> Unit = {},
     onNavigateToWidgets: () -> Unit,
     onNavigateToThemes: () -> Unit,
     onEditTheme: (String) -> Unit,
@@ -330,17 +331,6 @@ fun DesignScreenContent(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                SectionHeader(stringResource(R.string.design_section_designs), onAddDesign)
-                DesignsCarousel(
-                    designs = designs,
-                    onAddDesign = onAddDesign,
-                    onEditDesign = onEditTranslator
-                )
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
                 SectionHeader(stringResource(R.string.design_section_themes), onNavigateToThemes)
                 ThemesCarousel(
                     themes = availableThemes,
@@ -360,6 +350,17 @@ fun DesignScreenContent(
                     icons = widgetIcons,
                     onNavigateToWidgets = onNavigateToWidgets,
                     onAddWidget = onFabClick
+                )
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                SectionHeader(stringResource(R.string.design_section_designs), onNavigateToDesigns)
+                DesignsStatusCard(
+                    designs = designs,
+                    onAddDesign = onAddDesign,
+                    onManageDesigns = onNavigateToDesigns
                 )
             }
 
@@ -624,12 +625,15 @@ fun TranslatorsCarousel(
 
 // --- DESIGNS (templates + custom islands, #272) ---
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Where the designs stand, not what they look like: previews live in [DesignManagerScreen], which
+ * the section title and the Manage button open.
+ */
 @Composable
-fun DesignsCarousel(
+fun DesignsStatusCard(
     designs: List<com.d4viddf.hyperbridge.models.translator.CustomTranslator>,
     onAddDesign: () -> Unit,
-    onEditDesign: (String) -> Unit
+    onManageDesigns: () -> Unit
 ) {
     if (designs.isEmpty()) {
         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -663,35 +667,51 @@ fun DesignsCarousel(
                 }
             }
         }
-    } else {
-        val shown = designs.take(5)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        return
+    }
+
+    val active = designs.count { it.isEnabled }
+    val imported = designs.count { it.isImported }
+
+    Card(
+        onClick = onManageDesigns,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            shown.forEach { design ->
-                DesignPreviewCard(design = design, onClick = { onEditDesign(design.id) })
-            }
-            Card(
-                onClick = onAddDesign,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                modifier = Modifier.width(120.dp).height(200.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                DesignStat(designs.size, stringResource(R.string.design_stats_total), Modifier.weight(1f))
+                DesignStat(active, stringResource(R.string.design_stats_active), Modifier.weight(1f), highlight = true)
+                DesignStat(designs.size - active, stringResource(R.string.design_stats_inactive), Modifier.weight(1f))
+                DesignStat(imported, stringResource(R.string.design_stats_imported), Modifier.weight(1f))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onManageDesigns,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Rounded.Add, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.design_add_design_title),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(stringResource(R.string.design_stats_manage))
+                }
+                Button(
+                    onClick = onAddDesign,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.design_add_new))
                 }
             }
         }
@@ -699,49 +719,28 @@ fun DesignsCarousel(
 }
 
 @Composable
-private fun DesignPreviewCard(
-    design: com.d4viddf.hyperbridge.models.translator.CustomTranslator,
-    onClick: () -> Unit
-) {
-    val template = com.d4viddf.hyperbridge.models.translator.IslandTemplateCatalog
-        .find(design.presentation.templateId)
-
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.width(280.dp)
+private fun DesignStat(count: Int, label: String, modifier: Modifier = Modifier, highlight: Boolean = false) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (highlight) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = design.meta.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = template?.let { stringResource(it.nameRes) }
-                            ?: stringResource(R.string.translator_pres_mode_widget),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
-                if (!design.isEnabled) {
-                    Text(
-                        text = stringResource(R.string.translators_filter_inactive),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            com.d4viddf.hyperbridge.ui.components.island.HyperOsIslandPreview(
-                translator = design,
-                showChrome = false
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (highlight) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (highlight) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

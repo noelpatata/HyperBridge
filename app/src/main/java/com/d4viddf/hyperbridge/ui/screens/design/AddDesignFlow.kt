@@ -6,10 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,8 +75,8 @@ fun AddDesignFlow(
             AddDesignStep.TEMPLATE -> Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 24.dp),
+                    .fillMaxHeight()
+                    .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SheetHeader(
@@ -86,7 +89,8 @@ fun AddDesignFlow(
                         chosenTemplate = IslandTemplateCatalog.find(id)
                         step = AddDesignStep.NOTIFICATION_TYPE
                     },
-                    modifier = Modifier.heightIn(max = 520.dp)
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 24.dp)
                 )
             }
 
@@ -151,8 +155,7 @@ private fun NotificationTypeContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 32.dp),
+            .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SheetHeader(
@@ -165,18 +168,26 @@ private fun NotificationTypeContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        types.forEach { type ->
-            DesignSourceCard(
-                icon = getTranslatorOutlinedIcon(template.iconName),
-                title = stringResource(type.labelRes),
-                subtitle = if (suggested.contains(type)) {
-                    stringResource(template.descriptionRes)
-                } else {
-                    ""
-                },
-                enabled = true,
-                onClick = { onTypeSelected(type) }
-            )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(types, key = { it.name }) { type ->
+                DesignSourceCard(
+                    icon = getTranslatorOutlinedIcon(template.iconName),
+                    title = stringResource(type.labelRes),
+                    subtitle = if (suggested.contains(type)) {
+                        stringResource(template.descriptionRes)
+                    } else {
+                        ""
+                    },
+                    enabled = true,
+                    onClick = { onTypeSelected(type) }
+                )
+            }
         }
     }
 }

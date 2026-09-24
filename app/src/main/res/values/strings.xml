@@ -1484,6 +1484,20 @@
     <string name="design_template_type_desc">Pick the kind of notification this design applies to. You can add match conditions later from the translator editor.</string>
     <string name="design_design_created">Design added</string>
     <string name="translator_pres_template_gallery_desc">Pick a layout, then bind each element to the notification below.</string>
+
+    <string name="island_template_hint_copy">Copy</string>
+    <string name="island_template_hint_view">View</string>
+    <string name="island_template_hint_track">Track</string>
+
+    <string name="design_manager_title">My Designs</string>
+    <string name="design_manager_subtitle">Island templates and custom designs</string>
+    <string name="design_manager_show_previews">Show previews</string>
+    <string name="design_manager_show_icons">Show icons</string>
+    <string name="design_stats_total">Designs</string>
+    <string name="design_stats_active">Active</string>
+    <string name="design_stats_inactive">Inactive</string>
+    <string name="design_stats_imported">Imported</string>
+    <string name="design_stats_manage">Manage</string>
 </resources>
 
 
